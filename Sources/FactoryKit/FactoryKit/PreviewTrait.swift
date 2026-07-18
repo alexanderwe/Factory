@@ -36,31 +36,29 @@ extension PreviewTrait where T == Preview.ViewTraits {
     /// }
     /// ```
     /// - Parameters:
-    ///   - path: Key path to the factory on `Container` to override.
-    ///   - factory: Closure returning the mock instance to register.
+    ///   - keyPath: KeyPath to a Factory on the specified Container.
+    ///   - factory: A factory closure that produces an object of the desired type when required.
     public static func register<S>(
-        _ path: KeyPath<Container, Factory<S>> & Sendable,
+        _ keyPath: KeyPath<Container, Factory<S>> & Sendable,
         _ factory: @escaping @Sendable () -> S
     ) -> Self {
-        .modifier(FactoryPreviewTrait(path: path, factory: factory))
+        .modifier(FactoryPreviewTrait(keyPath: keyPath, factory: factory))
     }
 
-    /// Registers a preview override for a factory on the given container type.
+    /// Registers a preview override for a factory on a custom container type.
     /// ```swift
-    /// #Preview(traits: .register(on: PaymentsContainer.self, \.processor) { MockProcessor() }) {
+    /// #Preview(traits: .register(\PaymentsContainer.processor) { MockProcessor() }) {
     ///     ContentView()
     /// }
     /// ```
     /// - Parameters:
-    ///   - container: The `SharedContainer` type that owns the factory.
-    ///   - path: Key path to the factory on `container` to override.
-    ///   - factory: Closure returning the mock instance to register.
+    ///   - keyPath: KeyPath to a Factory on the specified Container.
+    ///   - factory: A factory closure that produces an object of the desired type when required.
     public static func register<C: SharedContainer, S>(
-        on container: C.Type,
-        _ path: KeyPath<C, Factory<S>> & Sendable,
+        _ keyPath: KeyPath<C, Factory<S>> & Sendable,
         _ factory: @escaping @Sendable () -> S
     ) -> Self {
-        .modifier(FactoryPreviewTrait(path: path, factory: factory))
+        .modifier(FactoryPreviewTrait(keyPath: keyPath, factory: factory))
     }
 
     /// Performs multiple registrations on the given container type, mirroring `Container.preview { ... }`.
@@ -72,22 +70,22 @@ extension PreviewTrait where T == Preview.ViewTraits {
     ///     ContentView()
     /// }
     /// ```
-    /// - Parameter setup: Closure that performs registrations on the default `Container`.
+    /// - Parameter transform: Closure that performs registrations on the default `Container`.
     public static func container(
-        _ setup: @escaping @Sendable (Container) -> Void
+        _ transform: @escaping @Sendable (Container) -> Void
     ) -> Self {
-        .modifier(FactoryContainerPreviewTrait<Container>(setup: setup))
+        .modifier(FactoryContainerPreviewTrait<Container>(transform: transform))
     }
 
     /// Performs multiple registrations on a custom container type.
     /// - Parameters:
-    ///   - container: The `SharedContainer` type to set up.
-    ///   - setup: Closure that performs registrations on `container`.
+    ///   - type: The `SharedContainer` type to set up.
+    ///   - transform: Closure that performs registrations on the container.
     public static func container<C: SharedContainer>(
-        _ container: C.Type,
-        _ setup: @escaping @Sendable (C) -> Void
+        _ type: C.Type,
+        _ transform: @escaping @Sendable (C) -> Void
     ) -> Self {
-        .modifier(FactoryContainerPreviewTrait<C>(setup: setup))
+        .modifier(FactoryContainerPreviewTrait<C>(transform: transform))
     }
 
 }
@@ -95,19 +93,19 @@ extension PreviewTrait where T == Preview.ViewTraits {
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
 struct FactoryPreviewTrait<C: SharedContainer, S>: PreviewModifier {
 
-    let path: KeyPath<C, Factory<S>> & Sendable
+    let keyPath: KeyPath<C, Factory<S>> & Sendable
     let factory: @Sendable () -> S
 
-    init(path: KeyPath<C, Factory<S>> & Sendable, factory: @escaping @Sendable () -> S) {
-        self.path = path
+    init(keyPath: KeyPath<C, Factory<S>> & Sendable, factory: @escaping @Sendable () -> S) {
+        self.keyPath = keyPath
         self.factory = factory
-        C.shared[keyPath: path].register(factory: factory)
+        C.shared[keyPath: keyPath].register(factory: factory)
     }
 
     func body(content: Content, context _: Void) -> some View {
         // Previews share a process and Xcode gives no timing guarantees for init,
         // so re-assert the registration on every render. Registration is idempotent.
-        C.shared[keyPath: path].register(factory: factory)
+        C.shared[keyPath: keyPath].register(factory: factory)
         return content
     }
 
@@ -116,15 +114,15 @@ struct FactoryPreviewTrait<C: SharedContainer, S>: PreviewModifier {
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
 struct FactoryContainerPreviewTrait<C: SharedContainer>: PreviewModifier {
 
-    let setup: @Sendable (C) -> Void
+    let transform: @Sendable (C) -> Void
 
-    init(setup: @escaping @Sendable (C) -> Void) {
-        self.setup = setup
-        setup(C.shared)
+    init(transform: @escaping @Sendable (C) -> Void) {
+        self.transform = transform
+        transform(C.shared)
     }
 
     func body(content: Content, context _: Void) -> some View {
-        setup(C.shared)
+        transform(C.shared)
         return content
     }
 
@@ -175,7 +173,7 @@ extension ExamplePreviewContainer {
 }
 
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
-#Preview("Custom container", traits: .register(on: ExamplePreviewContainer.self, \.exampleGreeting) { MockGreeting() }) {
+#Preview("Custom container", traits: .register(\ExamplePreviewContainer.exampleGreeting) { MockGreeting() }) {
     Text(ExamplePreviewContainer.shared.exampleGreeting().text)
 }
 
@@ -198,6 +196,21 @@ extension ExamplePreviewContainer {
     VStack {
         Text(ExamplePreviewContainer.shared.exampleGreeting().text)
         Text(ExamplePreviewContainer.shared.anotherGreeting().text)
+    }
+}
+
+// Traits can be mixed and matched across containers by listing several `#Preview` traits
+// side by side. Each is resolved against whichever container its key path points to.
+@available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
+#Preview(
+    "Multiple containers",
+    traits:
+        .register(\.exampleGreeting) { MockGreeting() },
+        .register(\ExamplePreviewContainer.exampleGreeting) { MockGreeting() }
+) {
+    VStack {
+        Text(Container.shared.exampleGreeting().text)
+        Text(ExamplePreviewContainer.shared.exampleGreeting().text)
     }
 }
 
