@@ -61,11 +61,11 @@ extension PreviewTrait where T == Preview.ViewTraits {
         .modifier(FactoryPreviewTrait(keyPath: keyPath, factory: factory))
     }
 
-    /// Performs multiple registrations on the given container type, mirroring `Container.preview { ... }`.
+    /// Performs multiple registrations on the default `Container`, mirroring `Container.preview { ... }`.
     /// ```swift
     /// #Preview(traits: .container { container in
-    ///     container.myService.register { MockService() }
-    ///     container.anotherService.register { MockAnother() }
+    ///     container.myService { MockService() }
+    ///     container.anotherService { MockAnother() }
     /// }) {
     ///     ContentView()
     /// }
@@ -77,12 +77,17 @@ extension PreviewTrait where T == Preview.ViewTraits {
         .modifier(FactoryContainerPreviewTrait<Container>(transform: transform))
     }
 
-    /// Performs multiple registrations on a custom container type.
-    /// - Parameters:
-    ///   - type: The `SharedContainer` type to set up.
-    ///   - transform: Closure that performs registrations on the container.
+    /// Performs multiple registrations on a custom container type, inferred from the closure's parameter type.
+    /// ```swift
+    /// #Preview(traits: .container { (container: PaymentsContainer) in
+    ///     container.myService { MockService() }
+    ///     container.anotherService { MockAnother() }
+    /// }) {
+    ///     ContentView()
+    /// }
+    /// ```
+    /// - Parameter transform: Closure that performs registrations on the custom container.
     public static func container<C: SharedContainer>(
-        _ type: C.Type,
         _ transform: @escaping @Sendable (C) -> Void
     ) -> Self {
         .modifier(FactoryContainerPreviewTrait<C>(transform: transform))
@@ -189,7 +194,7 @@ extension ExamplePreviewContainer {
 }
 
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
-#Preview("Multiple registrations on custom container", traits: .container(ExamplePreviewContainer.self) { container in
+#Preview("Multiple registrations on custom container", traits: .container { (container: ExamplePreviewContainer) in
     container.exampleGreeting.register { MockGreeting() }
     container.anotherGreeting.register { MockGreeting() }
 }) {
