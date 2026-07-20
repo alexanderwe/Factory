@@ -130,3 +130,76 @@ extension Container {
 }
 ```
 
+## Preview Traits
+
+Xcode 16 added composable traits to the macro-based `#Preview`, and Factory ships a set of them so mocks can be registered *declaratively*, as part of the preview's declaration, rather than as a statement inside the preview's body.
+
+```swift
+#Preview(traits: .register(\.myService) { MockService() }) {
+    ContentView()
+}
+```
+
+This resolves the same dependency graph as registering inline (as shown above), but utilising a more idomatic and clean way. 
+
+### Registering a Single Factory
+
+`.register` overrides one factory on the default `Container`.
+
+```swift
+#Preview(traits: .register(\.myService) { MockService() }) {
+    ContentView()
+}
+```
+
+### Registering on a Custom Container
+
+Point the key path at a custom container type and Factory infers the container.
+
+```swift
+#Preview(traits: .register(\PaymentsContainer.processor) { MockProcessor() }) {
+    ContentView()
+}
+```
+
+### Multiple Registrations
+
+`.container` hands you a transformer closure over the whole container, mirroring `Container.shared { ... }`, for when a preview needs more than one mock.
+
+```swift
+#Preview(traits: .container { container in
+    container.myService { MockService() }
+    container.anotherService { MockAnother() }
+}) {
+    ContentView()
+}
+```
+
+### Multiple Registrations on a Custom Container
+
+Annotate the closure's parameter with the container type you want and Factory infers it, the same way the single-factory `.register` form infers its container from the key path.
+
+```swift
+#Preview(traits: .container { (container: PaymentsContainer) in
+    container.processor { MockProcessor() }
+    container.ledger { MockLedger() }
+}) {
+    ContentView()
+}
+```
+
+### Combining Traits Across Containers
+
+`#Preview` traits are variadic, so `.register` and `.container` calls can be mixed and matched — including across different container types — in a single preview.
+
+```swift
+#Preview(traits:
+    .register(\.myService) { MockService() },
+    .register(\PaymentsContainer.processor) { MockProcessor() }
+) {
+    ContentView()
+}
+```
+
+> Important: Preview traits require iOS 18 / macOS 15 / tvOS 18 / watchOS 11 / visionOS 2 / macCatalyst 18 or later, since they build on the `PreviewModifier` trait system Apple introduced that release. On earlier OS versions, register inline in the preview body instead, as shown above.
+

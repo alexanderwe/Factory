@@ -179,6 +179,18 @@ The new way is cleaner and a lot more concise, so we'll use the new format going
 
 See the [Previews](https://hmlongco.github.io/Factory/documentation/factorykit/previews) documentation for more.
 
+### Preview Traits
+
+As of Xcode 16, `#Preview` supports composable traits, and that's the recommended way to mock dependencies for previews going forward. Unlike registering inline in the preview body, a trait registers its mock before `ContentView` is ever built, and traits compose, so a single preview can mock several factories — even across custom containers.
+
+```swift
+#Preview(traits: .register(\.myService) { MockService2() }) {
+    ContentView()
+}
+```
+
+See the [Previews](https://hmlongco.github.io/Factory/documentation/factorykit/previews) documentation for the full set of preview traits.
+
 ## Testing
 
 The mocking concept can also be used when writing unit tests. Consider the following...
