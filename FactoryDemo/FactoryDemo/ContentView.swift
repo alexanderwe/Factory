@@ -112,6 +112,21 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
+// Preview trait registering a single factory on the default Container.
+@available(iOS 18.0, macOS 15.0, *)
+#Preview("Trait Register", traits: .register(\.myServiceType) { MockServiceN(16) }) {
+    ContentView()
+}
+
+// Preview trait performing multiple registrations on the default Container.
+@available(iOS 18.0, macOS 15.0, *)
+#Preview("Trait Container", traits: .container { container in
+    container.myServiceType.register { MockServiceN(32) }
+    container.sharedService.register { MockServiceN(64) }
+}) {
+    ContentView()
+}
+
 // Illustrates multiple
 //struct ContentView_Previews: PreviewProvider {
 //    static var previews: some View {

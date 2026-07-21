@@ -39,7 +39,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
     ///   - keyPath: KeyPath to a Factory on the specified Container.
     ///   - factory: A factory closure that produces an object of the desired type when required.
     public static func register<S>(
-        _ keyPath: KeyPath<Container, Factory<S>> & Sendable,
+        _ keyPath: KeyPath<Container, Factory<S>>,
         _ factory: @escaping @Sendable () -> S
     ) -> Self {
         .modifier(FactoryPreviewTrait(keyPath: keyPath, factory: factory))
@@ -55,7 +55,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
     ///   - keyPath: KeyPath to a Factory on the specified Container.
     ///   - factory: A factory closure that produces an object of the desired type when required.
     public static func register<C: SharedContainer, S>(
-        _ keyPath: KeyPath<C, Factory<S>> & Sendable,
+        _ keyPath: KeyPath<C, Factory<S>>,
         _ factory: @escaping @Sendable () -> S
     ) -> Self {
         .modifier(FactoryPreviewTrait(keyPath: keyPath, factory: factory))
@@ -72,7 +72,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
     /// ```
     /// - Parameter transform: Closure that performs registrations on the default `Container`.
     public static func container(
-        _ transform: @escaping @Sendable (Container) -> Void
+        _ transform: @escaping (Container) -> Void
     ) -> Self {
         .modifier(FactoryContainerPreviewTrait<Container>(transform: transform))
     }
@@ -88,7 +88,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
     /// ```
     /// - Parameter transform: Closure that performs registrations on the custom container.
     public static func container<C: SharedContainer>(
-        _ transform: @escaping @Sendable (C) -> Void
+        _ transform: @escaping (C) -> Void
     ) -> Self {
         .modifier(FactoryContainerPreviewTrait<C>(transform: transform))
     }
@@ -98,10 +98,10 @@ extension PreviewTrait where T == Preview.ViewTraits {
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
 struct FactoryPreviewTrait<C: SharedContainer, S>: PreviewModifier {
 
-    let keyPath: KeyPath<C, Factory<S>> & Sendable
+    let keyPath: KeyPath<C, Factory<S>>
     let factory: @Sendable () -> S
 
-    init(keyPath: KeyPath<C, Factory<S>> & Sendable, factory: @escaping @Sendable () -> S) {
+    init(keyPath: KeyPath<C, Factory<S>>, factory: @escaping @Sendable () -> S) {
         self.keyPath = keyPath
         self.factory = factory
         C.shared[keyPath: keyPath].register(factory: factory)
@@ -119,9 +119,9 @@ struct FactoryPreviewTrait<C: SharedContainer, S>: PreviewModifier {
 @available(iOS 18.0, macOS 15.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, macCatalyst 18.0, *)
 struct FactoryContainerPreviewTrait<C: SharedContainer>: PreviewModifier {
 
-    let transform: @Sendable (C) -> Void
+    let transform: (C) -> Void
 
-    init(transform: @escaping @Sendable (C) -> Void) {
+    init(transform: @escaping (C) -> Void) {
         self.transform = transform
         transform(C.shared)
     }
